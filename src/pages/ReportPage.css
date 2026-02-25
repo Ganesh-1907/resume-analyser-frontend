@@ -273,3 +273,50 @@
         font-size: 1.8rem;
     }
 }
+/* ── PDF EXPORT OVERRIDES ────────────────────────── */
+.pdf-export-mode {
+    --bg-primary: #ffffff !important;
+    --bg-card: #ffffff !important;
+    --bg-secondary: #f8fafc !important;
+    --text-primary: #0f172a !important;
+    --text-secondary: #475569 !important;
+    --border: #e2e8f0 !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    padding: 24px !important;
+}
+
+.pdf-export-mode .glass-card {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
+
+.pdf-export-mode .score-hero {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: none !important;
+}
+
+.pdf-export-mode .score-circle-lg::before {
+    background: #f8fafc !important;
+}
+
+.pdf-export-mode .chart-bar-track,
+.pdf-export-mode .qa-score-bar {
+    background: #f1f5f9 !important;
+}
+
+.pdf-export-mode .qa-answer {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+}
+
+.pdf-export-mode .qa-item {
+    border: 1px solid #e2e8f0 !important;
+}
+
+.pdf-export-mode .badge {
+    border-width: 1px !important;
+}

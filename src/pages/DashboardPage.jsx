@@ -69,7 +69,7 @@ export default function DashboardPage() {
     if (!interviewType) return
     setStarting(true)
     try {
-      const res = await startInterview()
+      const res = await startInterview(interviewType)
       if (res.data.success) {
         navigate(`/interview/${interviewType}`, {
           state: { totalQuestions: res.data.total_questions, skills: res.data.skills_for_interview, interviewType }

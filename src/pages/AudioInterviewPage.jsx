@@ -27,9 +27,13 @@ export default function AudioInterviewPage() {
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
   const timerRef = useRef(null)
+  const isInitialized = useRef(false)
 
   useEffect(() => {
-    fetchQuestion()
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      fetchQuestion()
+    }
     return () => clearInterval(timerRef.current)
   }, [])
 
@@ -65,8 +69,21 @@ export default function AudioInterviewPage() {
       setTimeLeft(t)
       if (t <= 0) {
         clearInterval(timerRef.current)
+        autoSubmit()
       }
     }, 1000)
+  }
+
+  const autoSubmit = async () => {
+    // If still recording, stop it first
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      setRecording(false)
+      // Wait a bit for the onstop handler to create the blob
+      setTimeout(submitCurrentAnswer, 500)
+    } else {
+      submitCurrentAnswer()
+    }
   }
 
   const startRecording = async () => {
@@ -99,9 +116,9 @@ export default function AudioInterviewPage() {
   }
 
   const submitCurrentAnswer = async () => {
+    console.log('Final blobs:', { audioBlob, manualAnswer })
     if (!audioBlob && !manualAnswer.trim()) {
-      setError('Please record your answer or type a response')
-      return
+      if (!question) return
     }
     setProcessing(true)
     setError('')

@@ -34,6 +34,7 @@ export default function ReportPage() {
   const [downloading, setDownloading] = useState(false)
   const [saved, setSaved] = useState(false)
   const reportRef = useRef(null)
+  const hasSavedRef = useRef(false)
 
   useEffect(() => {
     fetchReport()
@@ -44,7 +45,7 @@ export default function ReportPage() {
       const res = await getInterviewSummary()
       if (res.data.success) {
         setReport(res.data.final_report)
-        autoSaveReport(res.data.final_report, res.data.resume_filename)
+        autoSaveReport(res.data.final_report, res.data.resume_filename, res.data.interview_type)
       } else {
         setError('Failed to load report')
       }
@@ -55,9 +56,12 @@ export default function ReportPage() {
     }
   }
 
-  const autoSaveReport = async (r, filename) => {
+  const autoSaveReport = async (r, filename, type) => {
+    if (hasSavedRef.current) return
+    hasSavedRef.current = true
     try {
       await saveReport({
+        interview_type: type || 'audio',
         overall_score: r.interview_performance.overall_score,
         rating: r.interview_performance.rating,
         total_questions: r.interview_performance.questions_asked,
@@ -74,12 +78,20 @@ export default function ReportPage() {
     setDownloading(true)
     try {
       const el = reportRef.current
+      el.classList.add('pdf-export-mode')
+      
+      // Give browser a tiny moment to reflow
+      await new Promise(r => setTimeout(r, 100))
+
       const canvas = await html2canvas(el, {
         scale: 2,
-        backgroundColor: '#0a0a0f',
+        backgroundColor: '#ffffff',
         useCORS: true,
         logging: false
       })
+      
+      el.classList.remove('pdf-export-mode')
+      
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
       const pdfW = pdf.internal.pageSize.getWidth()
@@ -171,6 +183,8 @@ export default function ReportPage() {
               <div className="score-breakdown">
                 {[
                   { label: 'Content Score', value: perf?.content_average || 0 },
+                  { label: 'Audio Confidence', value: perf?.audio_average || 0 },
+                  { label: 'Video Confidence', value: perf?.video_average || 0 },
                   { label: 'Questions Asked', value: null, raw: perf?.questions_asked || 0 },
                   { label: 'Duration', value: null, raw: `${Math.round(perf?.interview_duration_minutes || 0)} min` },
                 ].map(item => (

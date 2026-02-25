@@ -28,7 +28,7 @@ export const uploadResume = (formData) =>
   })
 
 // Interview
-export const startInterview = () => api.post('/start-interview')
+export const startInterview = (interviewType) => api.post('/start-interview', { interview_type: interviewType })
 export const getNextQuestion = () => api.get('/get-next-question')
 export const submitAnswer = (formData) =>
   api.post('/submit-answer', formData, {

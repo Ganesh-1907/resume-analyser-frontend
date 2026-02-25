@@ -30,10 +30,14 @@ export default function VideoInterviewPage() {
   const previewRef = useRef(null)
   const streamRef = useRef(null)
   const timerRef = useRef(null)
+  const isInitialized = useRef(false)
 
   useEffect(() => {
-    fetchQuestion()
-    initCamera()
+    if (!isInitialized.current) {
+      isInitialized.current = true
+      fetchQuestion()
+      initCamera()
+    }
     return () => {
       clearInterval(timerRef.current)
       if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop())
@@ -85,8 +89,21 @@ export default function VideoInterviewPage() {
     timerRef.current = setInterval(() => {
       t--
       setTimeLeft(t)
-      if (t <= 0) clearInterval(timerRef.current)
+      if (t <= 0) {
+        clearInterval(timerRef.current)
+        autoSubmit()
+      }
     }, 1000)
+  }
+
+  const autoSubmit = async () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop()
+      setRecording(false)
+      setTimeout(submitCurrentAnswer, 500)
+    } else {
+      submitCurrentAnswer()
+    }
   }
 
   const startRecording = () => {
@@ -112,9 +129,9 @@ export default function VideoInterviewPage() {
   }
 
   const submitCurrentAnswer = async () => {
+    console.log('Final blobs:', { videoBlob, manualAnswer })
     if (!videoBlob && !manualAnswer.trim()) {
-      setError('Please record your answer or type a response')
-      return
+      if (!question) return
     }
     setProcessing(true)
     clearInterval(timerRef.current)
