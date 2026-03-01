@@ -130,19 +130,25 @@ export default function VideoInterviewPage() {
 
   const submitCurrentAnswer = async () => {
     console.log('Final blobs:', { videoBlob, manualAnswer })
-    if (!videoBlob && !manualAnswer.trim()) {
-      if (!question) return
-    }
+    
+    // Allow empty submission for timeouts, but skip if no question loaded
+    if (!question) return;
+
     setProcessing(true)
     clearInterval(timerRef.current)
     try {
       const fd = new FormData()
       fd.append('question_id', question.question_id)
+      
       if (videoBlob) {
         fd.append('video_file', videoBlob, 'answer.webm')
-      } else {
+      } else if (manualAnswer.trim()) {
         fd.append('answer', manualAnswer.trim())
+      } else {
+        // Fallback for timeout or skip: send an empty answer to advance the state
+        fd.append('answer', '[No answer provided]')
       }
+      
       const res = await submitAnswer(fd)
       if (res.data.success) {
         const eval_ = res.data.evaluation
@@ -257,7 +263,13 @@ export default function VideoInterviewPage() {
             <div className="camera-preview glass-card">
               {cameraReady ? (
                 <>
-                  <video ref={videoRef} muted style={{ width: '100%', borderRadius: '12px', background: '#000' }} />
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    muted 
+                    playsInline
+                    style={{ width: '100%', borderRadius: '12px', background: '#000', display: 'block' }} 
+                  />
                   {recording && <div className="recording-indicator"><div className="rec-dot" /> REC</div>}
                 </>
               ) : (
