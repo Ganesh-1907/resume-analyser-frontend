@@ -29,6 +29,12 @@ export default function AudioInterviewPage() {
   const timerRef = useRef(null)
   const isInitialized = useRef(false)
 
+  // Refs to avoid stale closures in timer/autosubmit
+  const questionRef = useRef(null)
+  const audioBlobRef = useRef(null)
+  const manualAnswerRef = useRef('')
+  const processingRef = useRef(false)
+
   useEffect(() => {
     if (!isInitialized.current) {
       isInitialized.current = true
@@ -47,9 +53,10 @@ export default function AudioInterviewPage() {
       const res = await getNextQuestion()
       if (res.data.success) {
         setQuestion(res.data)
+        questionRef.current = res.data
         setQuestionNum(res.data.question_number)
         setTotal(res.data.total_questions)
-        setTimeLeft(120) // 2 min per question
+        setTimeLeft(60) // 1 min per question
         startTimer()
       } else if (res.data.interview_complete) {
         navigate('/report')
@@ -63,7 +70,7 @@ export default function AudioInterviewPage() {
 
   const startTimer = () => {
     clearInterval(timerRef.current)
-    let t = 120
+    let t = 60
     timerRef.current = setInterval(() => {
       t--
       setTimeLeft(t)
@@ -115,28 +122,36 @@ export default function AudioInterviewPage() {
     }
   }
 
+  // Sync state to refs
+  useEffect(() => { audioBlobRef.current = audioBlob }, [audioBlob])
+  useEffect(() => { manualAnswerRef.current = manualAnswer }, [manualAnswer])
+  useEffect(() => { processingRef.current = processing }, [processing])
+
   const submitCurrentAnswer = async () => {
-    console.log('Final blobs:', { audioBlob, manualAnswer })
-    if (!audioBlob && !manualAnswer.trim()) {
-      if (!question) return
-    }
+    const currentQuestion = questionRef.current;
+    const currentAudioBlob = audioBlobRef.current;
+    const currentManualAnswer = manualAnswerRef.current;
+
+    if (processingRef.current || !currentQuestion) return;
+
     setProcessing(true)
+    processingRef.current = true
     setError('')
     clearInterval(timerRef.current)
     try {
       const fd = new FormData()
-      fd.append('question_id', question.question_id)
-      if (audioBlob) {
-        fd.append('audio_file', audioBlob, 'answer.webm')
+      fd.append('question_id', currentQuestion.question_id)
+      if (currentAudioBlob) {
+        fd.append('audio_file', currentAudioBlob, 'answer.webm')
       } else {
-        fd.append('answer', manualAnswer.trim())
+        fd.append('answer', currentManualAnswer.trim())
       }
       const res = await submitAnswer(fd)
       if (res.data.success) {
         const eval_ = res.data.evaluation
         setResults(prev => [...prev, {
-          question: question.question,
-          category: question.category,
+          question: currentQuestion.question,
+          category: currentQuestion.category,
           score: eval_.composite_score,
           contentScore: eval_.content_evaluation?.total_score,
           transcription: res.data.transcription
@@ -145,12 +160,13 @@ export default function AudioInterviewPage() {
         const next = await getNextQuestion()
         if (next.data.success) {
           setQuestion(next.data)
+          questionRef.current = next.data
           setQuestionNum(next.data.question_number)
           setTotal(next.data.total_questions)
           setAudioBlob(null)
           setAudioUrl(null)
           setManualAnswer('')
-          setTimeLeft(120)
+          setTimeLeft(60)
           startTimer()
         } else {
           navigate('/report')
@@ -160,6 +176,7 @@ export default function AudioInterviewPage() {
       setError(err.response?.data?.error || 'Submission failed')
     } finally {
       setProcessing(false)
+      processingRef.current = false
     }
   }
 

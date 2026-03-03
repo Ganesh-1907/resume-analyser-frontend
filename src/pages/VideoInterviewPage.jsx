@@ -20,9 +20,15 @@ export default function VideoInterviewPage() {
   const [videoUrl, setVideoUrl] = useState(null)
   const [manualAnswer, setManualAnswer] = useState('')
   const [useText, setUseText] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(120)
+  const [timeLeft, setTimeLeft] = useState(60)
   const [loadingQ, setLoadingQ] = useState(true)
   const [cameraReady, setCameraReady] = useState(false)
+
+  // Refs to avoid stale closures in timer/autosubmit
+  const questionRef = useRef(null)
+  const videoBlobRef = useRef(null)
+  const manualAnswerRef = useRef('')
+  const processingRef = useRef(false)
 
   const mediaRecorderRef = useRef(null)
   const chunksRef = useRef([])
@@ -73,9 +79,10 @@ export default function VideoInterviewPage() {
       const res = await getNextQuestion()
       if (res.data.success) {
         setQuestion(res.data)
+        questionRef.current = res.data
         setQuestionNum(res.data.question_number)
         setTotal(res.data.total_questions)
-        setTimeLeft(120)
+        setTimeLeft(60)
         startTimer()
       } else if (res.data.interview_complete) {
         navigate('/report')
@@ -89,7 +96,7 @@ export default function VideoInterviewPage() {
 
   const startTimer = () => {
     clearInterval(timerRef.current)
-    let t = 120
+    let t = 60
     timerRef.current = setInterval(() => {
       t--
       setTimeLeft(t)
@@ -132,22 +139,29 @@ export default function VideoInterviewPage() {
     }
   }
 
+  // Sync state to refs for use in handlers that may be called from stale closures
+  useEffect(() => { videoBlobRef.current = videoBlob }, [videoBlob])
+  useEffect(() => { manualAnswerRef.current = manualAnswer }, [manualAnswer])
+  useEffect(() => { processingRef.current = processing }, [processing])
+
   const submitCurrentAnswer = async () => {
-    console.log('Final blobs:', { videoBlob, manualAnswer })
+    const currentQuestion = questionRef.current;
+    const currentVideoBlob = videoBlobRef.current;
+    const currentManualAnswer = manualAnswerRef.current;
     
-    // Allow empty submission for timeouts, but skip if no question loaded
-    if (!question) return;
+    if (processingRef.current || !currentQuestion) return;
 
     setProcessing(true)
+    processingRef.current = true
     clearInterval(timerRef.current)
     try {
       const fd = new FormData()
-      fd.append('question_id', question.question_id)
+      fd.append('question_id', currentQuestion.question_id)
       
-      if (videoBlob) {
-        fd.append('video_file', videoBlob, 'answer.webm')
-      } else if (manualAnswer.trim()) {
-        fd.append('answer', manualAnswer.trim())
+      if (currentVideoBlob) {
+        fd.append('video_file', currentVideoBlob, 'answer.webm')
+      } else if (currentManualAnswer.trim()) {
+        fd.append('answer', currentManualAnswer.trim())
       } else {
         // Fallback for timeout or skip: send an empty answer to advance the state
         fd.append('answer', '[No answer provided]')
@@ -157,18 +171,19 @@ export default function VideoInterviewPage() {
       if (res.data.success) {
         const eval_ = res.data.evaluation
         setResults(prev => [...prev, {
-          question: question.question,
+          question: currentQuestion.question,
           score: eval_.composite_score,
           transcription: res.data.transcription
         }])
         const next = await getNextQuestion()
         if (next.data.success) {
           setQuestion(next.data)
+          questionRef.current = next.data
           setQuestionNum(next.data.question_number)
           setVideoBlob(null)
           setVideoUrl(null)
           setManualAnswer('')
-          setTimeLeft(120)
+          setTimeLeft(60)
           startTimer()
         } else {
           navigate('/report')
@@ -178,6 +193,7 @@ export default function VideoInterviewPage() {
       setError(err.response?.data?.error || 'Submission failed')
     } finally {
       setProcessing(false)
+      processingRef.current = false
     }
   }
 
