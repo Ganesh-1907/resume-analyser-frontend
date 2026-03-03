@@ -48,16 +48,20 @@ export default function VideoInterviewPage() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        videoRef.current.play()
-      }
       setCameraReady(true)
     } catch {
       setError('Camera access denied. Use text input to answer.')
       setUseText(true)
     }
   }
+
+  // Handle video stream assignment when camera becomes ready
+  useEffect(() => {
+    if (cameraReady && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current
+      videoRef.current.play().catch(err => console.error("Video play failed:", err))
+    }
+  }, [cameraReady])
 
   const fetchQuestion = async () => {
     setLoadingQ(true)
@@ -279,7 +283,9 @@ export default function VideoInterviewPage() {
                 </div>
               )}
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center', marginTop: '8px' }}>Your live preview</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', textAlign: 'center', marginTop: '8px' }}>
+              {recording ? 'Recording live...' : 'Your live preview'}
+            </p>
           </div>
         </div>
 
