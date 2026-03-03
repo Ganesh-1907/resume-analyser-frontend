@@ -266,12 +266,6 @@ export default function ReportPage() {
                             <span>{Math.round((item.content_score?.total_score || 0) * 100)}%</span>
                           </div>
                         </div>
-                        {item.user_answer && (
-                          <div className="qa-answer">
-                            <strong>Your Answer:</strong>
-                            <p>{item.user_answer}</p>
-                          </div>
-                        )}
                         {item.content_score?.keywords_found?.length > 0 && (
                           <div style={{ marginTop: '10px' }}>
                             <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Keywords detected: </span>
